@@ -21,6 +21,29 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- aeson
+- lens
+- lens-aeson
+- text
+- wai
+- warp
+- http-conduit
+- http-types
+- bytestring
+- http-client
+- uri-encode
+- transformers
+
+default-extensions:
+- DataKinds
+- DeriveGeneric
+- FlexibleInstances
+- OverloadedStrings
+- ScopedTypeVariables
+- DeriveAnyClass
+- FlexibleContexts
+- TypeOperators
+- RecordWildCards
 
 library:
   source-dirs: src

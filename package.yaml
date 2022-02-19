@@ -33,6 +33,8 @@ dependencies:
 - http-client
 - uri-encode
 - transformers
+- postgresql-simple
+- text-show
 
 default-extensions:
 - DataKinds

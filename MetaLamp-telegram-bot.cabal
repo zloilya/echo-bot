@@ -51,7 +51,9 @@ library
     , http-types
     , lens
     , lens-aeson
+    , postgresql-simple
     , text
+    , text-show
     , transformers
     , uri-encode
     , wai
@@ -85,7 +87,9 @@ executable MetaLamp-telegram-bot-exe
     , http-types
     , lens
     , lens-aeson
+    , postgresql-simple
     , text
+    , text-show
     , transformers
     , uri-encode
     , wai
@@ -120,7 +124,9 @@ test-suite MetaLamp-telegram-bot-test
     , http-types
     , lens
     , lens-aeson
+    , postgresql-simple
     , text
+    , text-show
     , transformers
     , uri-encode
     , wai

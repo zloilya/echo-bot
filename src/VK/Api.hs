@@ -58,9 +58,7 @@ instance FromJSON LongPollServer where
   parseJSON = parseJsonDrop 5
 
 data Update = Update
-  { update_type :: Text,
-    update_object :: Object,
-    update_group_id :: Int64
+  { update_object :: Object
   }
   deriving (Show, Generic)
 
@@ -68,8 +66,7 @@ instance FromJSON Update where
   parseJSON = parseJsonDrop 7
 
 data Object = Object
-  { object_message :: Message,
-    object_client_info :: ClientInfo
+  { object_message :: Message
   }
   deriving (Show, Generic)
 
@@ -77,33 +74,15 @@ instance FromJSON Object where
   parseJSON = parseJsonDrop 7
 
 data Message = Message
-  { message_date :: Int64,
-    message_from_id :: Int64,
-    message_id :: Int64,
-    message_out :: Int64,
+  { message_from_id :: Int64,
     message_attachments :: [Attachments],
-    message_conversation_message_id :: Int64,
-    message_fwd_messages :: [Message],
-    message_important :: Bool,
-    message_is_hidden :: Bool,
-    message_payload :: Maybe Text,
     message_peer_id :: Int64,
-    message_random_id :: Int64,
     message_text :: Text
   }
   deriving (Show, Generic)
 
 instance FromJSON Message where
   parseJSON = parseJsonDrop 8
-
-data ClientInfo = ClientInfo
-  { button_actions :: [Text],
-    keyboard :: Bool,
-    inline_keyboard :: Bool,
-    carousel :: Bool,
-    lang_id :: Int64
-  }
-  deriving (FromJSON, Show, Generic)
 
 data Attachments = Attachments
   { atta_type :: Text,
@@ -115,18 +94,6 @@ instance FromJSON Attachments where
   parseJSON = parseJsonDrop 5
 
 data Sticker = Sticker
-  { product_id :: Int64,
-    sticker_id :: Int64,
-    images :: [Image],
-    images_with_background :: [Image],
-    animation_url :: Maybe Text,
-    is_allowed :: Maybe Bool
-  }
-  deriving (FromJSON, Show, Generic)
-
-data Image = Image
-  { url :: Text,
-    width :: Int64,
-    height :: Int64
+  { sticker_id :: Int64
   }
   deriving (FromJSON, Show, Generic)

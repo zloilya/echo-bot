@@ -14,6 +14,7 @@ cabal-dev
 *.eventlog
 .virtualenv
 Security.hs
+MyApi.hs
 .hsenv
 .hpc
 .cabal-sandbox/

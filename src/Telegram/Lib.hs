@@ -44,12 +44,6 @@ data SendJSON = SendJSON
   }
   deriving (ToJSON, Show, Generic)
 
-data Ok a = Ok
-  { ok :: Bool,
-    result :: a
-  }
-  deriving (FromJSON, Show, Generic)
-
 -- удобна не редачить сигнатуру для функций
 data Env = Env
   { chat_id_f :: Int64,
@@ -111,12 +105,7 @@ keyboardJ = Api.InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
     cons_num (showt -> n) =
       Api.InlineKeyboardButton
         { ikb_text = n,
-          ikb_url = Nothing,
-          ikb_callback_data = Just $ n,
-          ikb_switch_inline_query = Nothing,
-          ikb_callback_game = Nothing,
-          ikb_switch_inline_query_current_chat = Nothing,
-          ikb_pay = Nothing
+          ikb_callback_data = Just $ n
         }
 
 --Api.text
@@ -244,7 +233,7 @@ loopUpdate offset = do
       print "eitherDecode"
       print err
     Right up ->
-      case result up of
+      case Api.result up of
         [] -> loopUpdate offset
         ups -> do
           let offset = Api.update_id $ last ups
@@ -263,7 +252,7 @@ startLoopUpdate = do
       print "eitherDecode"
       print err
     Right up ->
-      case result up of
+      case Api.result up of
         [] -> startLoopUpdate
         ups -> do
           let offset = Api.update_id $ last ups

@@ -1,6 +1,9 @@
 module Main where
 
-import Lib
+import qualified Telegram.Lib as TG
+import qualified VK.Lib as VK
 
 main :: IO ()
-main = someFunc
+main = do 
+  -- TG.startServer
+  VK.startServer

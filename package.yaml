@@ -25,16 +25,15 @@ dependencies:
 - lens
 - lens-aeson
 - text
-- wai
-- warp
-- http-conduit
+- http-conduit # хотел бы вычеркнуть
+- http-client
+- http-client-tls
 - http-types
 - bytestring
 - http-client
-- uri-encode
-- transformers
 - postgresql-simple
 - text-show
+- random
 
 default-extensions:
 - DataKinds
@@ -46,6 +45,12 @@ default-extensions:
 - FlexibleContexts
 - TypeOperators
 - RecordWildCards
+- DeriveAnyClass
+- DerivingStrategies
+- GeneralizedNewtypeDeriving
+- StandaloneDeriving
+- TypeApplications
+- ViewPatterns
 
 library:
   source-dirs: src

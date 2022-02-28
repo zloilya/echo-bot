@@ -25,9 +25,12 @@ source-repository head
 
 library
   exposed-modules:
-      Api
-      Lib
       Security
+      Telegram.Api
+      Telegram.Lib
+      Telegram.MyApi
+      VK.Api
+      VK.Lib
   other-modules:
       Paths_MetaLamp_telegram_bot
   hs-source-dirs:
@@ -42,22 +45,26 @@ library
       FlexibleContexts
       TypeOperators
       RecordWildCards
+      DeriveAnyClass
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      StandaloneDeriving
+      TypeApplications
+      ViewPatterns
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
     , http-client
+    , http-client-tls
     , http-conduit
     , http-types
     , lens
     , lens-aeson
     , postgresql-simple
+    , random
     , text
     , text-show
-    , transformers
-    , uri-encode
-    , wai
-    , warp
   default-language: Haskell2010
 
 executable MetaLamp-telegram-bot-exe
@@ -76,6 +83,12 @@ executable MetaLamp-telegram-bot-exe
       FlexibleContexts
       TypeOperators
       RecordWildCards
+      DeriveAnyClass
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      StandaloneDeriving
+      TypeApplications
+      ViewPatterns
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MetaLamp-telegram-bot
@@ -83,17 +96,15 @@ executable MetaLamp-telegram-bot-exe
     , base >=4.7 && <5
     , bytestring
     , http-client
+    , http-client-tls
     , http-conduit
     , http-types
     , lens
     , lens-aeson
     , postgresql-simple
+    , random
     , text
     , text-show
-    , transformers
-    , uri-encode
-    , wai
-    , warp
   default-language: Haskell2010
 
 test-suite MetaLamp-telegram-bot-test
@@ -113,6 +124,12 @@ test-suite MetaLamp-telegram-bot-test
       FlexibleContexts
       TypeOperators
       RecordWildCards
+      DeriveAnyClass
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      StandaloneDeriving
+      TypeApplications
+      ViewPatterns
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MetaLamp-telegram-bot
@@ -120,15 +137,13 @@ test-suite MetaLamp-telegram-bot-test
     , base >=4.7 && <5
     , bytestring
     , http-client
+    , http-client-tls
     , http-conduit
     , http-types
     , lens
     , lens-aeson
     , postgresql-simple
+    , random
     , text
     , text-show
-    , transformers
-    , uri-encode
-    , wai
-    , warp
   default-language: Haskell2010

@@ -25,12 +25,15 @@ source-repository head
 
 library
   exposed-modules:
+      PostgresQuery
       Security
       Telegram.Api
+      Telegram.Common
       Telegram.Lib
-      Telegram.MyApi
+      Telegram.Query
       VK.Api
       VK.Lib
+      VK.Query
   other-modules:
       Paths_MetaLamp_telegram_bot
   hs-source-dirs:
@@ -51,16 +54,13 @@ library
       StandaloneDeriving
       TypeApplications
       ViewPatterns
+      BangPatterns
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
     , http-client
     , http-client-tls
-    , http-conduit
-    , http-types
-    , lens
-    , lens-aeson
     , postgresql-simple
     , random
     , text
@@ -89,6 +89,7 @@ executable MetaLamp-telegram-bot-exe
       StandaloneDeriving
       TypeApplications
       ViewPatterns
+      BangPatterns
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MetaLamp-telegram-bot
@@ -97,10 +98,6 @@ executable MetaLamp-telegram-bot-exe
     , bytestring
     , http-client
     , http-client-tls
-    , http-conduit
-    , http-types
-    , lens
-    , lens-aeson
     , postgresql-simple
     , random
     , text
@@ -130,6 +127,7 @@ test-suite MetaLamp-telegram-bot-test
       StandaloneDeriving
       TypeApplications
       ViewPatterns
+      BangPatterns
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MetaLamp-telegram-bot
@@ -138,10 +136,6 @@ test-suite MetaLamp-telegram-bot-test
     , bytestring
     , http-client
     , http-client-tls
-    , http-conduit
-    , http-types
-    , lens
-    , lens-aeson
     , postgresql-simple
     , random
     , text

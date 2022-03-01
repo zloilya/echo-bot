@@ -5,5 +5,5 @@ import qualified VK.Lib as VK
 
 main :: IO ()
 main = do 
-  -- TG.startServer
+  --TG.startServer
   VK.startServer

@@ -14,7 +14,7 @@ cabal-dev
 *.eventlog
 .virtualenv
 Security.hs
-MyApi.hs
+lastOffset
 .hsenv
 .hpc
 .cabal-sandbox/

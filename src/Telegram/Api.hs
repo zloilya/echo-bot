@@ -4,7 +4,7 @@ import Data.Aeson.Types
   ( FromJSON (parseJSON),
     GFromJSON,
     GToJSON,
-    Options (..),
+    Options (fieldLabelModifier, omitNothingFields),
     Parser,
     ToJSON (toJSON),
     Value,
@@ -14,7 +14,7 @@ import Data.Aeson.Types
     genericToJSON,
   )
 import Data.Int (Int64)
-import Data.List (drop, isPrefixOf)
+import Data.List (drop)
 import Data.Text (Text)
 import GHC.Generics (Generic (Rep))
 
@@ -42,9 +42,6 @@ data Chat = Chat
   }
   deriving (Show, Generic)
 
-instance ToJSON Chat where
-  toJSON = toJsonDrop 5
-
 instance FromJSON Chat where
   parseJSON = parseJsonDrop 5
 
@@ -52,9 +49,6 @@ data Sticker = Sticker
   { sticker_file_id :: Text
   }
   deriving (Show, Generic)
-
-instance ToJSON Sticker where
-  toJSON = toJsonDrop 8
 
 instance FromJSON Sticker where
   parseJSON = parseJsonDrop 8
@@ -82,9 +76,6 @@ data CallbackQuery = CallbackQuery
   }
   deriving (Show, Generic)
 
-instance ToJSON CallbackQuery where
-  toJSON = toJsonDrop 3
-
 instance FromJSON CallbackQuery where
   parseJSON = parseJsonDrop 3
 
@@ -93,13 +84,11 @@ data Update = Update
     message :: Maybe Message,
     callback_query :: Maybe CallbackQuery
   }
-  deriving (FromJSON, ToJSON, Show, Generic)
-
+  deriving (FromJSON, Show, Generic)
 
 data Message = Message
   { chat :: Chat,
     text :: Maybe Text,
     sticker :: Maybe Sticker
   }
-  deriving (FromJSON, ToJSON, Show, Generic)
-
+  deriving (FromJSON, Show, Generic)

@@ -13,7 +13,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Security (accessToken, groupId, token)
 import qualified Telegram.Api as Api
-import Telegram.Сommon (Env (..))
+import Telegram.Common (Env (..))
 import TextShow (TextShow (showt))
 
 -- базовая сылка телеги

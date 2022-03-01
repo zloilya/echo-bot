@@ -56,7 +56,7 @@ import Telegram.Query
     sendSticker,
     sendText,
   )
-import Telegram.Сommon (Env (..))
+import Telegram.Common (Env (..))
 import Text.Read (readMaybe)
 import TextShow (TextShow (showt))
 import Prelude hiding (log, putStr, putStrLn, readFile, writeFile)

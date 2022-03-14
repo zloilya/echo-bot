@@ -8,49 +8,51 @@ module Telegram.Query
   )
 where
 
-import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Security (accessToken, groupId, token)
-import qualified Telegram.Api as Api
-import Telegram.Common (Env (..))
+import Telegram.Api
+  ( InlineKeyboardButton (..),
+    InlineKeyboardMarkup (..),
+  )
+import Telegram.Types (ChatId, Token)
 import TextShow (TextShow (showt))
 
 -- базовая сылка телеги
-apiTg :: Text
-apiTg = "https://api.telegram.org/bot" `T.append` token
+apiTg :: Token -> Text
+apiTg token = "https://api.telegram.org/bot" `T.append` token
 
 -- реквест на отправку текста
-sendText :: Env -> Text
-sendText env@Env {..} =
+sendText :: Token -> ChatId -> Text -> Text
+sendText token chatId text =
   T.concat
-    [ apiTg,
-      "/sendMessage?chat_id=" `T.append` showt env_chat_id,
-      "&text=" `T.append` env_response_text
+    [ apiTg token,
+      "/sendMessage",
+      "?chat_id=" `T.append` showt chatId,
+      "&text=" `T.append` text
     ]
 
 -- реквест на отправку стикера
-sendSticker :: Env -> Text
-sendSticker env@Env {..} =
+sendSticker :: Token -> ChatId -> Text -> Text
+sendSticker token chatId text =
   T.concat
-    [ apiTg,
+    [ apiTg token,
       "/sendSticker",
-      "?chat_id=" `T.append` showt env_chat_id,
-      "&sticker=" `T.append` env_response_text
+      "?chat_id=" `T.append` showt chatId,
+      "&sticker=" `T.append` text
     ]
 
-sendJSON :: Text
-sendJSON = apiTg `T.append` "/sendMessage"
+sendJSON :: Token -> Text
+sendJSON token = apiTg token `T.append` "/sendMessage"
 
-getUpdates :: Text
-getUpdates = apiTg `T.append` "/getUpdates"
+getUpdates :: Token -> Text
+getUpdates token = apiTg token `T.append` "/getUpdates"
 
-keyboardJSON :: Api.InlineKeyboardMarkup
-keyboardJSON = Api.InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
+keyboardJSON :: InlineKeyboardMarkup
+keyboardJSON = InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
   where
-    cons_num :: Int -> Api.InlineKeyboardButton
+    cons_num :: Int -> InlineKeyboardButton
     cons_num (showt -> n) =
-      Api.InlineKeyboardButton
+      InlineKeyboardButton
         { ikb_text = n,
           ikb_callback_data = Just $ n
         }

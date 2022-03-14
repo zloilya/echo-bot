@@ -29,6 +29,7 @@ dependencies:
 - postgresql-simple
 - text-show
 - random
+- yaml
 
 default-extensions:
 - DataKinds
@@ -47,6 +48,7 @@ default-extensions:
 - TypeApplications
 - ViewPatterns
 - BangPatterns
+- NamedFieldPuns
 
 library:
   source-dirs: src

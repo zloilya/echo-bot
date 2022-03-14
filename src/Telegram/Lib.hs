@@ -3,6 +3,7 @@ module Telegram.Lib
   )
 where
 
+import Config (Settings (..))
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket)
 import Control.Monad (replicateM_)
@@ -18,24 +19,27 @@ import qualified Data.ByteString as B
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import qualified Data.ByteString.Lazy as LB
 import Data.Functor ((<&>))
-import Data.Int (Int64)
 import Data.Maybe (fromJust, fromMaybe, isNothing)
+import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn, readFile, writeFile)
 import Network.HTTP.Client
-  ( Manager,
-    RequestBody (..),
+  ( RequestBody (..),
     Response (..),
     defaultManagerSettings,
     httpLbs,
     method,
-    newManager,
     parseRequest,
     requestBody,
     requestHeaders,
   )
-import Network.HTTP.Client.TLS (getGlobalManager, setGlobalManager, tlsManagerSettings)
+import Network.HTTP.Client.TLS (getGlobalManager)
+import PostgresQuery
+  ( newRepeat,
+    queryRepeat,
+    updateRepeat,
+  )
 import Telegram.Api
   ( CallbackQuery (..),
     Chat (..),
@@ -44,11 +48,7 @@ import Telegram.Api
     Sticker (..),
     Update (..),
   )
-import PostgresQuery
-  ( newRepeat,
-    queryText,
-    updateRepeat,
-  )
+import Telegram.Config (Config (..))
 import Telegram.Query
   ( getUpdates,
     keyboardJSON,
@@ -56,23 +56,16 @@ import Telegram.Query
     sendSticker,
     sendText,
   )
-import Telegram.Common (Env (..))
+import Telegram.Types (ChatId, Env (..), MessageRequest (..), RawResponse, Token)
 import Text.Read (readMaybe)
 import TextShow (TextShow (showt))
 import Prelude hiding (log, putStr, putStrLn, readFile, writeFile)
 
--- резльтат обработки пользовательских действий
-data MessageRequest
-  = Stick Text -- для стикеров
-  | Mes Text -- для всех текстовых сообщений не являющимися командами
-  | Repeat -- для /repeat
-  | Start -- для /start
-
-messageId :: Message -> Int64
+messageId :: Message -> ChatId
 messageId = chat_id . chat
 
 -- обработка пользоватских действий
-whichMessage :: Message -> (MessageRequest, Int64)
+whichMessage :: Message -> (MessageRequest, ChatId)
 whichMessage mes = (messageRequest, messageId mes)
   where
     messageRequest = case text mes of
@@ -81,52 +74,49 @@ whichMessage mes = (messageRequest, messageId mes)
         Just st -> Stick $ sticker_file_id st
         Nothing -> Mes "unsupported because this is not a text or sticker"
 
-action :: Manager -> MessageRequest -> Int64 -> IO ()
-action manager mes chatid = case mes of
-  Stick st -> sendMessage manager $ Env chatid st sendSticker
-  Mes txt -> sendMessage manager $ Env chatid txt sendText
-  Repeat -> sendMessageJSON manager $ Env chatid "repeat" (\_ -> sendJSON)
-  Start -> newRepeat chatid
-
+action :: Env -> MessageRequest -> ChatId -> IO ()
+action env@Env {..} mes chatid = case mes of
+  Stick st -> sendMessage chatid $ sendSticker token chatid st
+  Mes txt -> sendMessage chatid $ sendText token chatid txt
+  Start -> newRepeat defaultRepeat "usersTG" chatid
+  Help -> sendMessage chatid $ sendText token chatid help
+  Repeat -> sendMessageKeyBoard env chatid
 
 {-
 todo
 
-
-1. Пользователь может отправить команду /repeat 
-и в ответ бот отправит какое 
-сейчас выбрано значение повторов и вопрос, 
+1. Пользователь может отправить команду /repeat
+и в ответ бот отправит какое
+сейчас выбрано значение повторов и вопрос,
 сколько раз повторять сообщение в дальнейшем
-
 
 -}
 
-
-
-
-
-
 whichText :: Text -> MessageRequest
 whichText "/start" = Start
-whichText "/help" = Mes "my bot for metalamp"
+whichText "/help" = Help
 whichText "/repeat" = Repeat
 whichText text = Mes text
 
 -- отправлет один раз сообщение
-sendMessageOne :: Manager -> Env -> IO ()
-sendMessageOne manager env@Env {..} = do
-  putStrLn env_response_text
-  resp <- parseRequest (T.unpack $ env_send env) >>= flip httpLbs manager
+sendMessageOne :: RawResponse -> IO ()
+sendMessageOne raw = do
+  putStrLn "sendMessageOne"
+  manager <- getGlobalManager
+  resp <- parseRequest (T.unpack $ raw) >>= flip httpLbs manager
   print resp
 
-sendMessageJSON :: Manager -> Env -> IO ()
-sendMessageJSON manager env@Env {..} = do
-  putStrLn env_response_text
-  initialRequest <- parseRequest (T.unpack $ env_send env)
+sendMessageKeyBoard :: Env -> ChatId -> IO ()
+sendMessageKeyBoard Env {..} chatId = do
+  sendMessage chatId $ sendText token chatId repeat
+  n <- queryRepeat "usersTG" chatId
+  sendMessage chatId $ sendText token chatId $ "now you have " <> showt n
+  manager <- getGlobalManager
+  initialRequest <- parseRequest (T.unpack $ sendJSON token)
   let requestObject =
         object
-          [ "chat_id" .= env_chat_id,
-            "text" .= env_response_text,
+          [ "chat_id" .= chatId,
+            "text" .= ("repeat" :: Text),
             "reply_markup" .= keyboardJSON,
             "one_time_keyboard" .= True
           ]
@@ -137,20 +127,19 @@ sendMessageJSON manager env@Env {..} = do
             requestBody = RequestBodyLBS $ encode requestObject
           }
   print request
-  print (encode requestObject)
   response <- httpLbs request manager
   print response
 
-sendMessage :: Manager -> Env -> IO ()
-sendMessage manager env@Env {..} = do
-  n <- queryText env_chat_id
-  replicateM_ n (sendMessageOne manager env)
-  print env_response_text
+sendMessage :: ChatId -> RawResponse -> IO ()
+sendMessage chatId raw = do
+  n <- queryRepeat "usersTG" chatId
+  replicateM_ n (sendMessageOne raw)
+  print raw
 
-actionUpdate :: Manager -> Update -> IO ()
-actionUpdate manager update = do
+actionUpdate :: Env -> Update -> IO ()
+actionUpdate env@Env {..} update = do
   print update
-  let actionM = (message update) <&> (uncurry (action manager) . whichMessage)
+  let actionM = (message update) <&> (uncurry (action env) . whichMessage)
   print (isNothing actionM)
   if (isNothing actionM)
     then do
@@ -178,15 +167,19 @@ actionUpdate manager update = do
       Just n -> allHave txt chatId n
 
     allHave txt chatId n = do
-      updateRepeat chatId n
+      updateRepeat table chatId n
       let repeatN = "received " `T.append` txt
-      let env = Env chatId repeatN sendText
-      sendMessage manager env
+      let raw = sendText token chatId repeatN
+      sendMessage chatId raw
 
-loopUpdate :: Manager -> Int -> IO ()
-loopUpdate manager offset = do
+loopUpdate :: Env -> IO ()
+loopUpdate env@Env {..} = do
   threadDelay (3 * 1000000)
-  let request = getUpdates `T.append` "?offset=" `T.append` showt offset
+  let request =
+        getUpdates token
+          `T.append` "?offset="
+          `T.append` showt offset
+  manager <- getGlobalManager
   resp <- parseRequest (T.unpack request) >>= flip httpLbs manager
 
   print resp
@@ -198,18 +191,18 @@ loopUpdate manager offset = do
       print err
     Right up ->
       case result up of
-        [] -> loopUpdate manager offset
+        [] -> loopUpdate env
         ups -> do
           let offset = update_id $ last ups
-          mapM_ (actionUpdate manager) ups
-          writeFile "src/lastOffset" (showt $ offset + 1)
-          loopUpdate manager (offset + 1)
+          mapM_ (actionUpdate env) ups
+          writeFile path (showt $ offset + 1)
+          loopUpdate $ env {offset = offset + 1}
 
-startServer :: IO ()
-startServer = do
-  manager <- newManager tlsManagerSettings
-  let path = "src/lastOffset"
+startServer :: Config -> Settings -> IO ()
+startServer Config {..} Settings {..} = do
   text <- readFile path
   print text
   let offset = fromMaybe (-1 :: Int) (readMaybe (T.unpack text))
-  loopUpdate manager offset
+  let table = fromString tableString
+  let env = Env {..}
+  loopUpdate env

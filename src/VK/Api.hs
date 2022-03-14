@@ -1,37 +1,10 @@
 module VK.Api where
 
-import Data.Aeson.Types
-  ( FromJSON (parseJSON),
-    GFromJSON,
-    GToJSON,
-    Options (..),
-    Parser,
-    SumEncoding (..),
-    ToJSON (toJSON),
-    Value (String),
-    Zero,
-    defaultOptions,
-    genericParseJSON,
-    genericToJSON,
-  )
-import qualified Data.Char as Char
-import Data.Int (Int32, Int64)
-import Data.List (drop, isPrefixOf)
-import Data.Text (Text, unpack)
-import GHC.Generics (Generic (Rep))
-
--- | Method used to drop prefix from field name during serialization
-toJsonDrop :: forall a. (Generic a, GToJSON Zero (Rep a)) => Int -> a -> Value
-toJsonDrop prefix =
-  genericToJSON
-    defaultOptions
-      { fieldLabelModifier = drop prefix,
-        omitNothingFields = True
-      }
-
--- | Method used to drop prefix from field name during deserialization
-parseJsonDrop :: forall a. (Generic a, GFromJSON Zero (Rep a)) => Int -> Value -> Parser a
-parseJsonDrop prefix = genericParseJSON defaultOptions {fieldLabelModifier = drop prefix}
+import Common (parseJsonDrop, toJsonDrop)
+import Data.Aeson.Types (FromJSON (..), ToJSON (..))
+import Data.Int (Int64)
+import Data.Text (Text)
+import GHC.Generics (Generic)
 
 data Ok = Ok
   { ok_ts :: Text,
@@ -77,7 +50,8 @@ data Message = Message
   { message_from_id :: Int64,
     message_attachments :: [Attachments],
     message_peer_id :: Int64,
-    message_text :: Text
+    message_text :: Text,
+    message_payload :: Maybe Text
   }
   deriving (Show, Generic)
 
@@ -95,5 +69,36 @@ instance FromJSON Attachments where
 
 data Sticker = Sticker
   { sticker_id :: Int64
+  }
+  deriving (FromJSON, Show, Generic)
+
+data KeyBoard = KeyBoard
+  { one_time :: Bool,
+    buttons :: [[Action1]]
+  }
+  deriving (ToJSON, Show, Generic)
+
+data Action1 = Action1
+  { action :: Action
+  }
+  deriving (ToJSON, Show, Generic)
+
+data Action = Action
+  { act_type :: Text,
+    act_payload :: Button,
+    act_label :: Text
+  }
+  deriving (Show, Generic)
+
+instance ToJSON Action where
+  toJSON = toJsonDrop 4
+
+data Button = Button
+  { button :: Text
+  }
+  deriving (FromJSON, ToJSON, Show, Generic)
+
+data Command = Command
+  { command :: Text
   }
   deriving (FromJSON, Show, Generic)

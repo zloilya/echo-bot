@@ -2,6 +2,7 @@ module PostgresQuery
   ( newRepeat,
     updateRepeat,
     queryRepeat,
+    Table
   )
 where
 

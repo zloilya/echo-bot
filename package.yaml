@@ -30,6 +30,7 @@ dependencies:
 - text-show
 - random
 - yaml
+- deriving-aeson
 
 default-extensions:
 - DataKinds

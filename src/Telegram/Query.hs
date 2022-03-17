@@ -18,13 +18,18 @@ import Telegram.Api
   ( InlineKeyboardButton (..),
     InlineKeyboardMarkup (..),
   )
-import Telegram.Types (ChatId, Token)
+import Telegram.Types (ChatId, StickerId, Token)
 import TextShow (TextShow (showt))
 
--- базовая сылка телеги
+{-
+main api telegram
+-}
 api :: Token -> Text
 api token = "https://api.telegram.org/bot" `T.append` token
 
+{-
+we need to know chat_id and text to send message for user
+-}
 valueMessage :: ChatId -> Text -> Value
 valueMessage chatId text =
   object
@@ -32,29 +37,41 @@ valueMessage chatId text =
       "text" .= text
     ]
 
-valueStiker :: ChatId -> Text -> Value
-valueStiker chatId text =
+{-
+we need to know chat_id and sticker to send message with sticker for user
+-}
+valueStiker :: ChatId -> StickerId -> Value
+valueStiker chatId stickerId =
   object
     [ "chat_id" .= showt chatId,
-      "sticker" .= text
+      "sticker" .= stickerId
     ]
 
+{-
+we need to know chat_id to send keybiar for user
+-}
 valueKeyBoard :: ChatId -> Value
 valueKeyBoard chatId =
   object
     [ "chat_id" .= chatId,
       "text" .= ("repeat" :: Text),
-      "reply_markup" .= keyboardJSON,
+      "reply_markup" .= keyboard,
       "one_time_keyboard" .= True
     ]
 
+{-
+maybe we need offset to get update
+-}
 valueUpdate :: Int -> Value
 valueUpdate offset =
   object
     ["offset" .= showt offset]
 
-keyboardJSON :: InlineKeyboardMarkup
-keyboardJSON = InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
+{-
+it is a keyboard
+-}
+keyboard :: InlineKeyboardMarkup
+keyboard = InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
   where
     cons_num :: Int -> InlineKeyboardButton
     cons_num (showt -> n) = InlineKeyboardButton n n

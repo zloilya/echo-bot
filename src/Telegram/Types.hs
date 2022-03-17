@@ -4,6 +4,7 @@ module Telegram.Types
     ChatId,
     Table,
     Token,
+    StickerId,
   )
 where
 
@@ -13,6 +14,11 @@ import PostgresQuery (Table)
 
 type Token = Text
 
+type StickerId = Text
+
+{-
+envaroment builds from telegram config and default settings
+-}
 data Env = Env
   { token :: Token,
     offset :: Int,
@@ -25,10 +31,12 @@ data Env = Env
 
 type ChatId = Int64
 
--- резльтат обработки пользовательских действий
+{-
+result processing message
+-}
 data MessageRequest
-  = Stick Text -- для стикеров
-  | Help -- для /help
-  | Mes Text -- для всех текстовых сообщений не являющимися командами
-  | Repeat -- для /repeat
-  | Start -- для /start
+  = Stick Text -- for sticker
+  | Help -- for /help
+  | Mes Text -- for text
+  | Repeat -- for /repeat
+  | Start -- for /start

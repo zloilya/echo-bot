@@ -7,13 +7,7 @@ import Config (Settings (..))
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket)
 import Control.Monad (replicateM_, void)
-import Data.Aeson
-  ( KeyValue ((.=)),
-    Value,
-    eitherDecode,
-    encode,
-    object,
-  )
+import Data.Aeson (FromJSON, Value, eitherDecode, encode)
 import Data.Aeson.Types (FromJSON, ToJSON)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -26,14 +20,11 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn, readFile, writeFile)
 import Network.HTTP.Client
-  ( RequestBody (..),
+  ( Request (..),
+    RequestBody (..),
     Response (..),
-    defaultManagerSettings,
     httpLbs,
-    method,
     parseRequest,
-    requestBody,
-    requestHeaders,
   )
 import Network.HTTP.Client.TLS (getGlobalManager)
 import PostgresQuery
@@ -69,13 +60,13 @@ import TextShow (TextShow (showt))
 import Prelude hiding (log, putStr, putStrLn, readFile, writeFile)
 
 {-
-метод получения из меседжа чат айди
+method get chat_id from message
 -}
 messageId :: Message -> ChatId
 messageId = chat_id . chat
 
 {-
-пользователь отправляет сообщение нам надо понять как реагировать
+user send message and we react somehow
 -}
 whichText :: Text -> MessageRequest
 whichText "/start" = Start
@@ -84,7 +75,8 @@ whichText "/repeat" = Repeat
 whichText text = Mes text
 
 {-
-обработка пользоватских действий из доступных текст и стикеры
+user send message and we react somehow and
+we ignore message which is not a text or sticker or command
 -}
 whichMessage :: Message -> (MessageRequest, ChatId)
 whichMessage mes = (messageRequest, messageId mes)
@@ -95,12 +87,12 @@ whichMessage mes = (messageRequest, messageId mes)
       MessageUnknown _ -> Mes "unsupported because this is not a text or sticker"
 
 {-
-после обработки сообщения реагируем одним из представленных способов, а именно
-1) если стикер то шлем стикер n раз
-2) если текст то шлем текст n раз
-3) если /start то добавляем в базу
-4) если /help то шлем сообщение из конфига
-5) если /repeat то шлем клавиатуру
+after processing message we need to do something
+1) if sticker then send sticker n times
+2) if text then send text n times
+3) if /start then create user in a db
+4) if /help then send text from config
+5) if /repeat then send keyboard
 -}
 action :: Env -> MessageRequest -> ChatId -> IO ()
 action env@Env {..} mes chatid = do
@@ -109,22 +101,25 @@ action env@Env {..} mes chatid = do
     Stick st -> do
       let value = valueStiker chatid st
       let io = sendMessageOne token "/sendSticker" value
-      sendIO io
+      void $ sendIO io
     Mes txt -> do
       let value = valueMessage chatid txt
       let io = sendMessageOne token "/sendMessage" value
-      sendIO io
+      void $ sendIO io
     Start -> newRepeat defaultRepeat table chatid
     Help -> do
       let value = valueMessage chatid help
       let io = sendMessageOne token "/sendMessage" value
-      sendIO io
+      void $ sendIO io
     Repeat -> do
       let value = valueKeyBoard chatid
+      let valueQuestion = valueMessage chatid repeat
+      let io = sendMessageOne token "/sendMessage" valueQuestion
+      void $ sendIO io
       void $ sendMessageOne token "/sendMessage" value
 
 {-
-отправлет один раз сообщение по зарание составленному респонсу
+send message one time with token method and json
 -}
 sendMessageOne :: Token -> Text -> Value -> IO LB.ByteString
 sendMessageOne token method requestObject = do
@@ -145,7 +140,7 @@ sendMessageOne token method requestObject = do
   return (responseBody resp)
 
 {-
-отправляет сообщение n раз
+send message n times
 -}
 sendN :: Table -> ChatId -> IO a -> IO ()
 sendN table chatId io = do
@@ -153,7 +148,10 @@ sendN table chatId io = do
   replicateM_ n io
 
 {-
-по update выполняет действие, если update один из ожидаемых
+now we have update and do something with it
+if update have message then go to action
+if update have callback then update value on db
+if update unknown then do nothing :shrag:
 -}
 actionUpdate :: Env -> Update -> IO ()
 actionUpdate env@Env {..} update = do
@@ -179,8 +177,7 @@ actionUpdate env@Env {..} update = do
   print "endActionUpdate"
 
 {-
-посылает реквест и декодирует ответ, бросает ошибку
-(до этого просто возвращала Nothing, и тоже завершала программу)
+send request and docode it, throw error, because we can't start
 -}
 requestDecode :: FromJSON a => Token -> Text -> Value -> IO a
 requestDecode token method value = do
@@ -190,7 +187,7 @@ requestDecode token method value = do
     _ -> error "unknown telegram response"
 
 {-
-раз в 3 секунды запрашивает у телеграмма список update и страется их выполнить
+every 3 second send to telegram request and update offset after it
 -}
 handleUpdate :: Env -> (Update -> IO b) -> IO a
 handleUpdate env@Env {..} action = do
@@ -205,7 +202,7 @@ handleUpdate env@Env {..} action = do
   handleUpdate (env {offset = newOffset}) action
 
 {-
-по конфигу и настройкам заупскает бота для телеграмма
+with config and settings start telegram bot
 -}
 startServer :: Config -> Settings -> IO ()
 startServer Config {..} Settings {..} = do

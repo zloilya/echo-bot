@@ -59,8 +59,7 @@ instance FromJSON Message where
   parseJSON = parseJsonDrop 8
 
 data Attachments = Attachments
-  { atta_type :: Text,
-    atta_sticker :: Sticker
+  { atta_sticker :: Sticker
   }
   deriving (Show, Generic)
 

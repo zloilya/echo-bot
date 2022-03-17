@@ -1,8 +1,15 @@
-module Telegram.Types where
+module Telegram.Types
+  ( Env (..),
+    MessageRequest (..),
+    ChatId,
+    Table,
+    Token,
+  )
+where
 
 import Data.Int (Int64)
 import Data.Text (Text)
-import Database.PostgreSQL.Simple.Types (Query)
+import PostgresQuery (Table)
 
 type Token = Text
 
@@ -13,12 +20,10 @@ data Env = Env
     help :: Text,
     repeat :: Text,
     defaultRepeat :: Int,
-    table :: Query
+    table :: Table
   }
 
 type ChatId = Int64
-
-type RawResponse = Text
 
 -- резльтат обработки пользовательских действий
 data MessageRequest

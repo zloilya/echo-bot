@@ -1,13 +1,17 @@
 module Telegram.Query
-  ( apiTg,
-    sendText,
-    sendSticker,
-    sendJSON,
-    getUpdates,
-    keyboardJSON,
+  ( api,
+    valueKeyBoard,
+    valueUpdate,
+    valueStiker,
+    valueMessage,
   )
 where
 
+import Data.Aeson
+  ( KeyValue ((.=)),
+    Value,
+    object,
+  )
 import Data.Text (Text)
 import qualified Data.Text as T
 import Telegram.Api
@@ -18,41 +22,39 @@ import Telegram.Types (ChatId, Token)
 import TextShow (TextShow (showt))
 
 -- базовая сылка телеги
-apiTg :: Token -> Text
-apiTg token = "https://api.telegram.org/bot" `T.append` token
+api :: Token -> Text
+api token = "https://api.telegram.org/bot" `T.append` token
 
--- реквест на отправку текста
-sendText :: Token -> ChatId -> Text -> Text
-sendText token chatId text =
-  T.concat
-    [ apiTg token,
-      "/sendMessage",
-      "?chat_id=" `T.append` showt chatId,
-      "&text=" `T.append` text
+valueMessage :: ChatId -> Text -> Value
+valueMessage chatId text =
+  object
+    [ "chat_id" .= showt chatId,
+      "text" .= text
     ]
 
--- реквест на отправку стикера
-sendSticker :: Token -> ChatId -> Text -> Text
-sendSticker token chatId text =
-  T.concat
-    [ apiTg token,
-      "/sendSticker",
-      "?chat_id=" `T.append` showt chatId,
-      "&sticker=" `T.append` text
+valueStiker :: ChatId -> Text -> Value
+valueStiker chatId text =
+  object
+    [ "chat_id" .= showt chatId,
+      "sticker" .= text
     ]
 
-sendJSON :: Token -> Text
-sendJSON token = apiTg token `T.append` "/sendMessage"
+valueKeyBoard :: ChatId -> Value
+valueKeyBoard chatId =
+  object
+    [ "chat_id" .= chatId,
+      "text" .= ("repeat" :: Text),
+      "reply_markup" .= keyboardJSON,
+      "one_time_keyboard" .= True
+    ]
 
-getUpdates :: Token -> Text
-getUpdates token = apiTg token `T.append` "/getUpdates"
+valueUpdate :: Int -> Value
+valueUpdate offset =
+  object
+    ["offset" .= showt offset]
 
 keyboardJSON :: InlineKeyboardMarkup
 keyboardJSON = InlineKeyboardMarkup $ [map cons_num [1, 2, 3, 4, 5]]
   where
     cons_num :: Int -> InlineKeyboardButton
-    cons_num (showt -> n) =
-      InlineKeyboardButton
-        { ikb_text = n,
-          ikb_callback_data = Just $ n
-        }
+    cons_num (showt -> n) = InlineKeyboardButton n n

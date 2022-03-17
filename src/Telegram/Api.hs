@@ -1,9 +1,12 @@
+{-# LANGUAGE DerivingVia #-}
+
 module Telegram.Api where
 
 import Common (parseJsonDrop, toJsonDrop)
 import Data.Aeson.Types (FromJSON (..), ToJSON (..))
 import Data.Int (Int64)
 import Data.Text (Text)
+import Deriving.Aeson (CustomJSON (..), FieldLabelModifier, StripPrefix, SumUntaggedValue)
 import GHC.Generics (Generic)
 
 data Ok a = Ok
@@ -11,6 +14,36 @@ data Ok a = Ok
     result :: a
   }
   deriving (FromJSON, Show, Generic)
+
+data Update
+  = UpdateMessage
+      { update_id :: Int,
+        message :: Message
+      }
+  | UpdateCallBack
+      { update_id :: Int,
+        callback_query :: CallbackQuery
+      }
+  | UpdateUnknown
+      { update_id :: Int
+      }
+  deriving stock (Show, Generic)
+  deriving (FromJSON) via (CustomJSON '[SumUntaggedValue] Update)
+
+data Message
+  = MessageText
+      { chat :: Chat,
+        text :: Text
+      }
+  | MessageSticker
+      { chat :: Chat,
+        sticker :: Sticker
+      }
+  | MessageUnknown
+      { chat :: Chat
+      }
+  deriving stock (Show, Generic)
+  deriving (FromJSON) via (CustomJSON '[SumUntaggedValue] Message)
 
 data Chat = Chat
   { chat_id :: Int64
@@ -31,39 +64,22 @@ instance FromJSON Sticker where
 data InlineKeyboardMarkup = InlineKeyboardMarkup
   { inline_keyboard :: [[InlineKeyboardButton]]
   }
-  deriving (FromJSON, ToJSON, Show, Generic)
+  deriving (ToJSON, Show, Generic)
 
 data InlineKeyboardButton = InlineKeyboardButton
   { ikb_text :: Text,
-    ikb_callback_data :: Maybe Text
+    ikb_callback_data :: Text
   }
   deriving (Show, Generic)
 
 instance ToJSON InlineKeyboardButton where
   toJSON = toJsonDrop 4
 
-instance FromJSON InlineKeyboardButton where
-  parseJSON = parseJsonDrop 4
-
 data CallbackQuery = CallbackQuery
-  { cq_message :: Maybe Message,
-    cq_data :: Maybe Text
+  { cq_message :: Message,
+    cq_data :: Text
   }
   deriving (Show, Generic)
 
 instance FromJSON CallbackQuery where
   parseJSON = parseJsonDrop 3
-
-data Update = Update
-  { update_id :: Int,
-    message :: Maybe Message,
-    callback_query :: Maybe CallbackQuery
-  }
-  deriving (FromJSON, Show, Generic)
-
-data Message = Message
-  { chat :: Chat,
-    text :: Maybe Text,
-    sticker :: Maybe Sticker
-  }
-  deriving (FromJSON, Show, Generic)

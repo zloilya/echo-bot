@@ -83,7 +83,7 @@ whichMessage mes = (messageRequest, messageId mes)
   where
     messageRequest = case mes of
       MessageText _ txt -> whichText txt
-      MessageSticker _ st -> Stick $ sticker_file_id st
+      MessageSticker _ st -> Stick $ file_id st
       MessageUnknown _ -> Mes "unsupported because this is not a text or sticker"
 
 {-
@@ -92,7 +92,7 @@ after processing message we need to do something
 2) if text then send text n times
 3) if /start then create user in a db
 4) if /help then send text from config
-5) if /repeat then send keyboard
+5) if /repeat then send keyboard and question from config
 -}
 action :: Env -> MessageRequest -> ChatId -> IO ()
 action env@Env {..} mes chatid = do
@@ -177,7 +177,7 @@ actionUpdate env@Env {..} update = do
   print "endActionUpdate"
 
 {-
-send request and docode it, throw error, because we can't start
+send request and decode it, throw error, because we can't start
 -}
 requestDecode :: FromJSON a => Token -> Text -> Value -> IO a
 requestDecode token method value = do

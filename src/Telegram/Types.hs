@@ -17,7 +17,7 @@ type Token = Text
 type StickerId = Text
 
 {-
-envaroment builds from telegram config and default settings
+environment builds from telegram config and default settings
 -}
 data Env = Env
   { token :: Token,
@@ -35,8 +35,8 @@ type ChatId = Int64
 result processing message
 -}
 data MessageRequest
-  = Stick Text -- for sticker
+  = Start -- for /start
   | Help -- for /help
-  | Mes Text -- for text
   | Repeat -- for /repeat
-  | Start -- for /start
+  | Stick Text -- for sticker
+  | Mes Text -- for text

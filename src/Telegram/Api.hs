@@ -19,7 +19,7 @@ import GHC.Generics (Generic)
 import Telegram.Types (StickerId)
 
 {-
-telegram return Ok structure
+telegram send to us Ok structure
 -}
 data Ok a = Ok
   { ok :: Bool,
@@ -78,12 +78,9 @@ instance FromJSON Chat where
 we need to know file_id to send sticker back
 -}
 data Sticker = Sticker
-  { sticker_file_id :: Text
+  { file_id :: Text
   }
-  deriving (Show, Generic)
-
-instance FromJSON Sticker where
-  parseJSON = parseJsonDrop 8
+  deriving (FromJSON, Show, Generic)
 
 {-
 send buttons to user

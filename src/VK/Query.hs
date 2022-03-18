@@ -40,8 +40,8 @@ import VK.Types
 {-
 main api vk
 -}
-apiVk :: Text
-apiVk = "https://api.vk.com/method/"
+api :: Text
+api = "https://api.vk.com/method"
 
 {-
 we often need this three field
@@ -60,8 +60,8 @@ vk send us LongPollServer
 getLongPollServer :: Token -> GroupId -> Text
 getLongPollServer token groupId =
   T.concat
-    [ apiVk,
-      "groups.getLongPollServer",
+    [ api,
+      "/groups.getLongPollServer",
       groupAccessVersion token groupId
     ]
 
@@ -71,8 +71,8 @@ vk filter for us messages
 setLongPollSettings :: Token -> GroupId -> Text
 setLongPollSettings token groupId =
   T.concat
-    [ apiVk,
-      "groups.setLongPollSettings",
+    [ api,
+      "/groups.setLongPollSettings",
       groupAccessVersion token groupId,
       "&enabled=1",
       "&message_new=1"
@@ -153,7 +153,7 @@ requestKeyBoard Env {..} userId peerId randomId initialRequest = do
 method to send query
 -}
 sendQuery :: Text
-sendQuery = apiVk `T.append` "messages.send"
+sendQuery = api `T.append` "/messages.send"
 
 {-
 it is a keyboard

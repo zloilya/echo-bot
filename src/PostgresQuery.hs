@@ -25,14 +25,18 @@ type ChatId = Int64
 
 type Def = Int
 
--- существует ли уже такой юзер
+{-
+does this user already exist?
+-}
 isAssigned :: Table -> Connection -> ChatId -> IO Bool
 isAssigned users conn chatId =
   query @_ @(Only Int64) conn select (Only chatId) <&> not . null
   where
     select = "SELECT id FROM " <> users <> " WHERE id = ?"
 
--- увеличивает count для юзера
+{-
+increment count for user
+-}
 updateCount :: Table -> ChatId -> Int -> Connection -> IO ()
 updateCount users chatId newCount conn = do
   bool <- isAssigned users conn chatId
@@ -46,18 +50,24 @@ updateCount users chatId newCount conn = do
       execute conn insert (chatId, newCount)
   print ("execute: " ++ show res)
 
--- создает юзера или ставит ему значение 1
+{-
+create user and set defualt repeat for it
+-}
 newRepeat :: Def -> Table -> ChatId -> IO ()
 newRepeat def users chatId = updateRepeat users chatId def
 
--- создает юзера или ставит ему значение n
+{-
+bracket version updateCount
+-}
 updateRepeat :: Table -> ChatId -> Int -> IO ()
 updateRepeat users chatId n = bracket (connectPostgreSQL connString) close update
   where
     connString = "host=localhost dbname=metalamp"
     update = updateCount users chatId n
 
--- обращается в базу за значением юзера
+{-
+get count value from user table
+-}
 queryCount :: Table -> ChatId -> Connection -> IO Int
 queryCount users chatId conn = do
   ls <- query @_ @(Only Int) conn select (Only chatId)
@@ -67,7 +77,9 @@ queryCount users chatId conn = do
   where
     select = "SELECT count FROM " <> users <> " WHERE id = ?"
 
--- запрос к базе metalamp queryCount обернытый в bracket на случай ошибки
+{-
+bracket version queryCount
+-}
 queryRepeat :: Table -> ChatId -> IO Int
 queryRepeat users = bracket (connectPostgreSQL connString) close . queryCount users
   where

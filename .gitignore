@@ -13,7 +13,6 @@ cabal-dev
 *.hp
 *.eventlog
 .virtualenv
-Security.hs
 Config.yaml
 lastOffset
 .hsenv

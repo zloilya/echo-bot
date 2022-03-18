@@ -6,18 +6,13 @@ where
 import Config (Settings (..))
 import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
-import Data.Aeson
-  ( KeyValue ((.=)),
-    eitherDecode,
-    encode,
-    object,
-  )
+import Data.Aeson (eitherDecode)
 import Data.Aeson.Types (FromJSON)
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (fromStrict, toStrict)
+import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString.Lazy as LB
 import Data.Functor (void)
-import Data.Maybe (fromJust, fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -25,18 +20,10 @@ import Data.Text.Encoding (encodeUtf8)
 import Data.Text.IO (putStrLn)
 import GHC.Generics (Generic (..))
 import Network.HTTP.Client
-  ( Manager,
-    Request,
-    RequestBody (..),
+  ( Request,
     Response (..),
-    defaultManagerSettings,
     httpLbs,
-    method,
-    newManager,
     parseRequest,
-    requestBody,
-    requestHeaders,
-    setQueryString,
   )
 import Network.HTTP.Client.TLS (getGlobalManager)
 import PostgresQuery (Table, newRepeat, queryRepeat, updateRepeat)
@@ -62,14 +49,14 @@ import VK.Query
     requestKeyBoard,
     requestMessage,
     requestSticker,
-    sendJSON,
+    sendQuery,
     setLongPollSettings,
   )
-import VK.Types (ChatId, Env (..), PeerId, RandomId, UserId)
+import VK.Types (ChatId, Env (..), MessageRequest (..), PeerId, RandomId, UserId)
 import Prelude hiding (putStrLn)
 
 {-
-метод принимает готовый респонс и отправляет его
+send to vk request
 -}
 post :: Text -> IO (Response LB.ByteString)
 post request = do
@@ -78,29 +65,29 @@ post request = do
   httpLbs resp manager
 
 {-
-отправляет один реквест
+need function to constract request and after send it
 -}
 sendOne :: (RandomId -> Request -> Request) -> IO ()
 sendOne send = do
   randomId <- randomIO
   manager <- getGlobalManager
-  initRequest <- parseRequest (T.unpack sendJSON)
+  initRequest <- parseRequest (T.unpack sendQuery)
   let request = send randomId initRequest
   print =<< httpLbs request manager
 
 {-
-отправляет n раз реквест
+send reqest n times
 -}
-sendMany :: Table -> UserId -> (RandomId -> Request -> Request) -> IO ()
-sendMany table userId send = do
+sendN :: Table -> UserId -> (RandomId -> Request -> Request) -> IO ()
+sendN table userId send = do
   n <- queryRepeat table userId
   replicateM_ n (sendOne send)
-  print "end sendMany"
+  print "end sendN"
 
 {-
-много интересного может храть payload если он пришел
-если Command start то newRepeat
-если Button num то updateRepeat
+if payload come with Message he can have start command or buttons
+if Command start then newRepeat
+if Button num then updateRepeat
 -}
 actionCommand :: Env -> Maybe Text -> ChatId -> IO ()
 actionCommand Env {..} payload userId = case payload of
@@ -118,7 +105,45 @@ actionCommand Env {..} payload userId = case payload of
       print ("yes: " ++ show num)
 
 {-
-по update выполняет действие, если update один из ожидаемых
+user send message and we react somehow
+-}
+whichText :: Text -> MessageRequest
+whichText "/help" = Help
+whichText "/repeat" = Repeat
+whichText text = Mes text
+
+{-
+after processing message we need to do something
+1) if text then send text n times
+2) if /help then send text from config
+3) if /repeat then send keyboard and question from config
+-}
+action :: Env -> UserId -> PeerId -> MessageRequest -> IO ()
+action env@Env {..} userId peerId mes = do
+  let sendIO = sendN table userId
+  case mes of
+    Mes txt -> do
+      print "wow message!!!!"
+      let send = requestMessage env userId txt
+      void $ sendIO send
+    Help -> do
+      print "its help"
+      let send = requestMessage env userId help
+      void $ sendIO send
+    Repeat -> do
+      print "its repeat"
+      let send = requestKeyBoard env userId peerId
+      let sendQuestion = requestMessage env userId repeat
+      void $ sendIO sendQuestion
+      void $ sendOne send
+
+{-
+now we have update and do something with it
+check if the field paylod exists
+if paylod have start then create user in db
+if paylod have button then update value on db
+check if the field attachments is not empty
+if update unknown then do nothing :shrag:
 -}
 actionUpdate :: Env -> Update -> IO ()
 actionUpdate env@Env {..} (Update (Object message)) = do
@@ -128,25 +153,16 @@ actionUpdate env@Env {..} (Update (Object message)) = do
   case attachments of
     [] -> do
       print "i think is message"
-      if text == "/repeat"
-        then do
-          print "its repeat"
-          let send = requestKeyBoard env userId peerId
-          sendOne send
-        else do
-          print "wow message!!!!"
-          let send = requestMessage env userId text
-          sendMany table userId send
+      action env userId peerId $ whichText text
     ats -> mapM_ sendSt ats
       where
         sendSt (Attachments (Sticker stickerId)) = do
           print "wow sticker!!!!"
           let send = requestSticker env userId peerId stickerId
-          sendMany table userId send
+          void $ sendN table userId send
 
 {-
-посылает реквест и декодирует ответ, бросает ошибку
-(до этого просто возвращала Nothing, и тоже завершала программу)
+send request and decode it, throw error, because we can't start
 -}
 requestDecode :: FromJSON a => Text -> IO a
 requestDecode request = do
@@ -156,7 +172,7 @@ requestDecode request = do
     _ -> error "unknown vk response"
 
 {-
-раз в 3 секунды запрашивает у телеграмма список update и страется их выполнить
+every 3 second send to vk request and update offset after it
 -}
 handleUpdate :: Env -> (Update -> IO b) -> IO a
 handleUpdate env@Env {..} action = do
@@ -168,14 +184,13 @@ handleUpdate env@Env {..} action = do
   handleUpdate env {lps = lps {long_ts = ts}} action
 
 {-
-по конфигу и настройкам заупскает бота для вконтакте
+with config and settings start vk bot
 -}
 startServer :: Config -> Settings -> IO ()
 startServer Config {..} Settings {..} = do
   print "start"
   let table = fromString tableString
-  let request = getLongPollServer token groupId
-  VKResponse lps <- requestDecode request
+  VKResponse lps <- requestDecode $ getLongPollServer token groupId
   print "well done"
   set_resp <- post $ setLongPollSettings token groupId
   print set_resp

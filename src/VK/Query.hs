@@ -2,7 +2,7 @@ module VK.Query
   ( getLongPollServer,
     setLongPollSettings,
     getUpdates,
-    sendJSON,
+    sendQuery,
     requestKeyBoard,
     requestMessage,
     requestSticker,
@@ -16,17 +16,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Client
-  ( Manager,
-    Request,
-    RequestBody (..),
-    Response (..),
-    defaultManagerSettings,
-    httpLbs,
-    method,
-    newManager,
-    parseRequest,
-    requestBody,
-    requestHeaders,
+  ( Request,
     setQueryString,
   )
 import TextShow (TextShow (showt))
@@ -47,9 +37,15 @@ import VK.Types
     UserId,
   )
 
+{-
+main api vk
+-}
 apiVk :: Text
 apiVk = "https://api.vk.com/method/"
 
+{-
+we often need this three field
+-}
 groupAccessVersion :: Token -> GroupId -> Text
 groupAccessVersion token groupId =
   T.concat
@@ -58,6 +54,9 @@ groupAccessVersion token groupId =
       "&v=5.131"
     ]
 
+{-
+vk send us LongPollServer
+-}
 getLongPollServer :: Token -> GroupId -> Text
 getLongPollServer token groupId =
   T.concat
@@ -66,6 +65,9 @@ getLongPollServer token groupId =
       groupAccessVersion token groupId
     ]
 
+{-
+vk filter for us messages
+-}
 setLongPollSettings :: Token -> GroupId -> Text
 setLongPollSettings token groupId =
   T.concat
@@ -76,6 +78,9 @@ setLongPollSettings token groupId =
       "&message_new=1"
     ]
 
+{-
+get updates
+-}
 getUpdates :: LongPollServer -> Text
 getUpdates LongPollServer {..} =
   T.concat
@@ -86,9 +91,15 @@ getUpdates LongPollServer {..} =
       "&wait=25"
     ]
 
+{-
+helper function
+-}
 setQuery :: Text -> Maybe ByteString
 setQuery = Just . encodeUtf8
 
+{-
+preparation to send message
+-}
 requestMessage :: Env -> UserId -> Text -> RandomId -> Request -> Request
 requestMessage Env {..} userId text randomId initialRequest = do
   let request =
@@ -103,6 +114,9 @@ requestMessage Env {..} userId text randomId initialRequest = do
           initialRequest
   request
 
+{-
+preparation to send sticker
+-}
 requestSticker :: Env -> UserId -> PeerId -> StikerId -> RandomId -> Request -> Request
 requestSticker Env {..} userId peerId stickerId randomId initialRequest = do
   let request =
@@ -117,6 +131,9 @@ requestSticker Env {..} userId peerId stickerId randomId initialRequest = do
           initialRequest
   request
 
+{-
+preparation to send keyboard
+-}
 requestKeyBoard :: Env -> UserId -> PeerId -> RandomId -> Request -> Request
 requestKeyBoard Env {..} userId peerId randomId initialRequest = do
   let request =
@@ -127,20 +144,22 @@ requestKeyBoard Env {..} userId peerId randomId initialRequest = do
             ("random_id", Just . encodeUtf8 $ showt randomId),
             ("peer_id", Just . encodeUtf8 $ showt peerId),
             ("message", Just . encodeUtf8 $ "repeat"),
-            ("keyboard", Just . toStrict . encode $ keyboardJSON)
+            ("keyboard", Just . toStrict . encode $ keyboard)
           ]
           initialRequest
   request
 
-sendJSON :: Text
-sendJSON =
-  T.concat
-    [ apiVk,
-      "messages.send"
-    ]
+{-
+method to send query
+-}
+sendQuery :: Text
+sendQuery = apiVk `T.append` "messages.send"
 
-keyboardJSON :: KeyBoard
-keyboardJSON =
+{-
+it is a keyboard
+-}
+keyboard :: KeyBoard
+keyboard =
   KeyBoard True [map cons_num [1, 2, 3, 4, 5]]
   where
     cons_num :: Int -> Action1

@@ -1,0 +1,54 @@
+
+# config with settings telegram bot, vk bot and defualt settings
+
+# start telegram bot
+tgStart: false
+
+# start vk bot
+vkStart: false
+
+# ------------------------------------------ #
+
+# telegram bot
+tgConfig:
+  # token for telegram bot
+  token: "your telegram token"
+  # path to file
+  path: "src/lastOffset"
+  # name table telegram in postgress
+  tableString: "usersTG"
+  # we can change it during testing
+  api: "https://api.telegram.org/bot"
+
+# ------------------------------------------ #
+
+# vk bot
+vkConfig:
+  # token for vk bot
+  token: "your vk token"
+  # group id
+  groupId: "your group id"
+  # name table vk in postgress
+  tableString: "usersVK"
+  # we can change it during testing
+  api: "https://api.vk.com/method"
+
+# ------------------------------------------ #
+
+# database settings
+database: 
+  # database host
+  host: "localhost" 
+  # database name
+  dbname: "your dbname"
+
+# ------------------------------------------ #
+
+# Everything should be as customizable as possible through configs
+settings:
+  # a. The message sent in response to /help.
+  help: "Hi!!!"
+  # b. Question about the /repeat command.
+  repeat: "How many more messages do you need to receive?"
+  # c. The initial number of repeat for each answer.
+  defaultRepeat: 1

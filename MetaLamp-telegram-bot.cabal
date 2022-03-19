@@ -27,6 +27,7 @@ library
   exposed-modules:
       Common
       Config
+      Logger
       PostgresQuery
       Telegram.Api
       Telegram.Config

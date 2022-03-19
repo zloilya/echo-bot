@@ -3,7 +3,7 @@ module Telegram.Lib
   )
 where
 
-import Config (Settings (..))
+import Config (Settings (..), Database (..))
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket)
 import Control.Monad (replicateM_, void)
@@ -31,6 +31,8 @@ import PostgresQuery
   ( newRepeat,
     queryRepeat,
     updateRepeat,
+    Table,
+    Postgres (..),
   )
 import Telegram.Api
   ( CallbackQuery (..),
@@ -52,12 +54,12 @@ import Telegram.Types
   ( ChatId,
     Env (..),
     MessageRequest (..),
-    Table,
     Token,
   )
 import Text.Read (readMaybe)
 import TextShow (TextShow (showt))
-import Prelude hiding (log, putStr, putStrLn, readFile, writeFile)
+import Prelude hiding (readFile, writeFile)
+import Logger(Log(..), logFunctions)
 
 {-
 method get chat_id from message
@@ -96,34 +98,41 @@ after processing message we need to do something
 -}
 action :: Env -> MessageRequest -> ChatId -> IO ()
 action env@Env {..} mes chatid = do
-  let sendIO = sendN table chatid
+  let sendIO = sendN Postgres{..} chatid
   case mes of
     Stick st -> do
+      logInfo "action: sticker"
       let value = valueStiker chatid st
-      let io = sendMessageOne token "/sendSticker" value
+      let io = sendOne env "/sendSticker" value
       void $ sendIO io
     Mes txt -> do
+      logInfo "action: message"
       let value = valueMessage chatid txt
-      let io = sendMessageOne token "/sendMessage" value
+      let io = sendOne env "/sendMessage" value
       void $ sendIO io
-    Start -> newRepeat defaultRepeat table chatid
+    Start -> do
+      logInfo "action: start"
+      newRepeat Postgres{..} chatid
     Help -> do
+      logInfo "action: help"
       let value = valueMessage chatid help
-      let io = sendMessageOne token "/sendMessage" value
+      let io = sendOne env "/sendMessage" value
       void $ sendIO io
     Repeat -> do
+      logInfo "action: repeat"
       let value = valueKeyBoard chatid
       let valueQuestion = valueMessage chatid repeat
-      let io = sendMessageOne token "/sendMessage" valueQuestion
+      let io = sendOne env "/sendMessage" valueQuestion
       void $ sendIO io
-      void $ sendMessageOne token "/sendMessage" value
+      void $ sendOne env "/sendMessage" value
 
 {-
 send message one time with token method and json
 -}
-sendMessageOne :: Token -> Text -> Value -> IO LB.ByteString
-sendMessageOne token method requestObject = do
-  putStrLn "sendMessageOne"
+sendOne :: Env -> Text -> Value -> IO LB.ByteString
+sendOne Env {..} method requestObject = do
+  logInfo $ "send " ++ (T.unpack method)
+  logDebug "start sendOne"
   manager <- getGlobalManager
   initialRequest <- parseRequest (T.unpack $ api token `T.append` method)
   let request =
@@ -132,19 +141,20 @@ sendMessageOne token method requestObject = do
             requestHeaders = [("Content-Type", "application/json; charset=utf-8")],
             requestBody = RequestBodyLBS $ encode requestObject
           }
-  print method
-  print requestObject
-  print request
+  logDebug $ "method:" ++ show method
+  logDebug $ "requestObject:" ++ show requestObject
+  logDebug $ "request:" ++ show request
   resp <- httpLbs request manager
-  print resp
+  logDebug $ "response:" ++ show resp
+  logDebug "end sendOne"
   return (responseBody resp)
 
 {-
 send message n times
 -}
-sendN :: Table -> ChatId -> IO a -> IO ()
-sendN table chatId io = do
-  n <- queryRepeat table chatId
+sendN :: Postgres -> ChatId -> IO a -> IO ()
+sendN post chatId io = do
+  n <- queryRepeat post chatId
   replicateM_ n io
 
 {-
@@ -155,45 +165,47 @@ if update unknown then do nothing :shrag:
 -}
 actionUpdate :: Env -> Update -> IO ()
 actionUpdate env@Env {..} update = do
-  print "startActionUpdate"
-  print update
+  logInfo "startActionUpdate"
+  logDebug $ "update:" ++ show update
   case update of
     UpdateMessage _ mes -> do
-      print "have message"
+      logInfo "have message"
       uncurry (action env) . whichMessage $ mes
     UpdateCallBack _ (CallbackQuery mes txt) -> do
-      print "have callback"
+      logInfo "have callback"
       let chatId = messageId mes
       case readMaybe (T.unpack txt) of
-        Nothing -> print "no valid text"
+        Nothing -> logWarn "no valid text"
         Just n -> do
-          updateRepeat table chatId n
+          logInfo "good callback"
+          updateRepeat Postgres{..} chatId n
           let repeatN = "received " `T.append` (showt n)
           let value = valueMessage chatId repeatN
-          let io = sendMessageOne token "/sendMessage" value
-          sendN table chatId io
+          let io = sendOne env "/sendMessage" value
+          sendN Postgres{..} chatId io
     UpdateUnknown _ -> do
-      print "unknown update"
-  print "endActionUpdate"
+      logWarn "unknown update"
+  logInfo "endActionUpdate"
 
 {-
 send request and decode it, throw error, because we can't start
 -}
-requestDecode :: FromJSON a => Token -> Text -> Value -> IO a
-requestDecode token method value = do
-  body <- sendMessageOne token method value
+requestDecode :: (Show a, FromJSON a) => Env -> Text -> Value -> IO a
+requestDecode env method value = do
+  body <- sendOne env method value
   case eitherDecode body of
     Right (Ok {ok = True, result}) -> pure result
-    _ -> error "unknown telegram response"
+    _e -> error $ "unknown telegram response:" ++ show _e
 
 {-
 every 3 second send to telegram request and update offset after it
 -}
 handleUpdate :: Env -> (Update -> IO b) -> IO a
 handleUpdate env@Env {..} action = do
+  logInfo "handle updates"
   threadDelay (3 * 1000000)
   let value = valueUpdate offset
-  updates <- requestDecode token "/getUpdates" value
+  updates <- requestDecode env "/getUpdates" value
   mapM_ action updates
   let newOffset = case updates of
         [] -> offset
@@ -206,9 +218,13 @@ with config and settings start telegram bot
 -}
 startServer :: Config -> Settings -> IO ()
 startServer Config {..} Settings {..} = do
+  let Database{..} = database
+  let Log{..} = logFunctions loglevel
+  logInfo "Start telegram server"
   text <- readFile path
-  print text
+  logInfo $ "read from file offset" ++ (T.unpack text)
   let offset = fromMaybe (0 :: Int) (readMaybe (T.unpack text))
   let table = fromString tableString
   let env = Env {..}
+  logInfo "Start loop updates"
   handleUpdate env (actionUpdate env)

@@ -2,13 +2,18 @@ module PostgresQuery
   ( newRepeat,
     updateRepeat,
     queryRepeat,
-    Table
+    Table,
+    Postgres (..),
   )
 where
 
 import Control.Exception (bracket)
+import Control.Monad (void, unless)
 import Data.Functor ((<&>))
 import Data.Int (Int32, Int64)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Text.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
@@ -26,6 +31,19 @@ type ChatId = Int64
 type Def = Int
 
 {-
+Postgres enviroment
+-}
+data Postgres = Postgres
+  { table :: Table,
+    defaultRepeat :: Int,
+    host :: Text,
+    dbname :: Text,
+    logDebug :: String -> IO (),
+    logInfo :: String -> IO (),
+    logWarn :: String -> IO ()
+  }
+
+{-
 does this user already exist?
 -}
 isAssigned :: Table -> Connection -> ChatId -> IO Bool
@@ -37,50 +55,69 @@ isAssigned users conn chatId =
 {-
 increment count for user
 -}
-updateCount :: Table -> ChatId -> Int -> Connection -> IO ()
-updateCount users chatId newCount conn = do
-  bool <- isAssigned users conn chatId
-  print ("isAssigned: " ++ show bool)
+updateCount :: Postgres -> ChatId -> Int -> Connection -> IO ()
+updateCount Postgres {..} chatId newCount conn = do
+  bool <- isAssigned table conn chatId
   res <- case bool of
     True -> do
-      let update = "UPDATE " <> users <> " set count = ? where id = ?"
+      let update = "UPDATE " <> table <> " set count = ? where id = ?"
       execute conn update (newCount, chatId)
     False -> do
-      let insert = "INSERT INTO " <> users <> " (id, count) VALUES (?, ?)"
+      let insert = "INSERT INTO " <> table <> " (id, count) VALUES (?, ?)"
       execute conn insert (chatId, newCount)
-  print ("execute: " ++ show res)
+  logDebug $ "database result:" ++ show res
 
 {-
 create user and set defualt repeat for it
 -}
-newRepeat :: Def -> Table -> ChatId -> IO ()
-newRepeat def users chatId = updateRepeat users chatId def
+newRepeat :: Postgres -> ChatId -> IO ()
+newRepeat post@Postgres {..} chatId = updateRepeat post chatId defaultRepeat
 
 {-
 bracket version updateCount
 -}
-updateRepeat :: Table -> ChatId -> Int -> IO ()
-updateRepeat users chatId n = bracket (connectPostgreSQL connString) close update
+updateRepeat :: Postgres -> ChatId -> Int -> IO ()
+updateRepeat post@Postgres {..} chatId =
+  bracket (connectPostgreSQL connString) close . (updateCount post chatId)
   where
-    connString = "host=localhost dbname=metalamp"
-    update = updateCount users chatId n
+    connString =
+      encodeUtf8 $
+        T.concat
+          [ "host=" `T.append` host,
+            " ",
+            "dbname=" `T.append` dbname
+          ]
+{-
+help function
+-}
+isSingleton :: [a] -> Bool
+isSingleton [_] = True
+isSingleton _   = False
 
 {-
 get count value from user table
 -}
-queryCount :: Table -> ChatId -> Connection -> IO Int
-queryCount users chatId conn = do
+queryCount :: Postgres -> ChatId -> Connection -> IO Int
+queryCount Postgres {..} chatId conn = do
   ls <- query @_ @(Only Int) conn select (Only chatId)
+  unless (isSingleton ls) $ logWarn $ "it can't be" ++ show ls
   pure $ case ls of
     [(Only n)] -> n
     _ -> 1
   where
-    select = "SELECT count FROM " <> users <> " WHERE id = ?"
+    select = "SELECT count FROM " <> table <> " WHERE id = ?"
 
 {-
 bracket version queryCount
 -}
-queryRepeat :: Table -> ChatId -> IO Int
-queryRepeat users = bracket (connectPostgreSQL connString) close . queryCount users
+queryRepeat :: Postgres -> ChatId -> IO Int
+queryRepeat post@Postgres {..} =
+  bracket (connectPostgreSQL connString) close . queryCount post
   where
-    connString = "host=localhost dbname=metalamp"
+    connString =
+      encodeUtf8 $
+        T.concat
+          [ "host=" `T.append` host,
+            " ",
+            "dbname=" `T.append` dbname
+          ]

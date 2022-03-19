@@ -3,7 +3,7 @@ module VK.Lib
   )
 where
 
-import Config (Settings (..))
+import Config (Settings (..), Database (..))
 import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import Data.Aeson (eitherDecode)
@@ -26,7 +26,12 @@ import Network.HTTP.Client
     parseRequest,
   )
 import Network.HTTP.Client.TLS (getGlobalManager)
-import PostgresQuery (Table, newRepeat, queryRepeat, updateRepeat)
+import PostgresQuery (
+  Table, 
+  Postgres(..),
+  newRepeat, 
+  queryRepeat, 
+  updateRepeat)
 import System.Random (randomIO)
 import Text.Read (readMaybe)
 import TextShow (TextShow (showt))
@@ -54,6 +59,7 @@ import VK.Query
   )
 import VK.Types (ChatId, Env (..), MessageRequest (..), PeerId, RandomId, UserId)
 import Prelude hiding (putStrLn)
+import Logger (Log(..), logFunctions)
 
 {-
 send to vk request
@@ -67,22 +73,25 @@ post request = do
 {-
 need function to constract request and after send it
 -}
-sendOne :: (RandomId -> Request -> Request) -> IO ()
-sendOne send = do
+sendOne :: Env -> (RandomId -> Request -> Request) -> IO ()
+sendOne Env {..} send = do
+  logInfo "start SendOne"
   randomId <- randomIO
   manager <- getGlobalManager
   initRequest <- parseRequest (T.unpack sendQuery)
   let request = send randomId initRequest
-  print =<< httpLbs request manager
+  logInfo $ "request:" ++ show request
+  resp <- httpLbs request manager
+  logDebug $ "response:" ++ show resp
+  logInfo "end sendOne"
 
 {-
 send reqest n times
 -}
-sendN :: Table -> UserId -> (RandomId -> Request -> Request) -> IO ()
-sendN table userId send = do
-  n <- queryRepeat table userId
-  replicateM_ n (sendOne send)
-  print "end sendN"
+sendN :: Env -> UserId -> (RandomId -> Request -> Request) -> IO ()
+sendN env@Env {..} userId send = do
+  n <- queryRepeat Postgres{..} userId
+  replicateM_ n (sendOne env send)
 
 {-
 if payload come with Message he can have start command or buttons
@@ -91,18 +100,20 @@ if Button num then updateRepeat
 -}
 actionCommand :: Env -> Maybe Text -> ChatId -> IO ()
 actionCommand Env {..} payload userId = case payload of
-  Nothing -> print "no payload"
+  Nothing -> logInfo "no payload"
   Just txt -> case eitherDecode (fromStrict . encodeUtf8 $ txt) of
     Left s1 -> case eitherDecode @Command (fromStrict . encodeUtf8 $ txt) of
-      Left s2 -> print s1 >> print s2
+      Left s2 -> do 
+        logWarn $ "it not a button:" ++ s1
+        logWarn $ "it not a Command:" ++ s2
       Right com ->
         if command com == "start"
-          then newRepeat defaultRepeat table userId
-          else print "this command not a start???"
+          then newRepeat Postgres{..} userId
+          else logWarn "this command not a start???"
     Right (Button textNum) -> do
       let num = fromMaybe (1 :: Int) (readMaybe (T.unpack textNum))
-      updateRepeat table userId num
-      print ("yes: " ++ show num)
+      updateRepeat Postgres{..} userId num
+      logInfo ("button: " ++ show num)
 
 {-
 user send message and we react somehow
@@ -120,22 +131,22 @@ after processing message we need to do something
 -}
 action :: Env -> UserId -> PeerId -> MessageRequest -> IO ()
 action env@Env {..} userId peerId mes = do
-  let sendIO = sendN table userId
+  let sendIO = sendN env userId
   case mes of
     Mes txt -> do
-      print "wow message!!!!"
+      logInfo "its message"
       let send = requestMessage env userId txt
       void $ sendIO send
     Help -> do
-      print "its help"
+      logInfo "its help"
       let send = requestMessage env userId help
       void $ sendIO send
     Repeat -> do
-      print "its repeat"
+      logInfo "its repeat"
       let send = requestKeyBoard env userId peerId
       let sendQuestion = requestMessage env userId repeat
       void $ sendIO sendQuestion
-      void $ sendOne send
+      void $ sendOne env send
 
 {-
 now we have update and do something with it
@@ -147,36 +158,37 @@ if update unknown then do nothing :shrag:
 -}
 actionUpdate :: Env -> Update -> IO ()
 actionUpdate env@Env {..} (Update (Object message)) = do
+  logInfo "startActionUpdate"
   let Message userId attachments peerId text payload = message
-  print "well update"
   void $ actionCommand env payload userId
   case attachments of
     [] -> do
-      print "i think is message"
+      logInfo "maybe is message"
       action env userId peerId $ whichText text
     ats -> mapM_ sendSt ats
       where
         sendSt (Attachments (Sticker stickerId)) = do
-          print "wow sticker!!!!"
+          logInfo "it is a sticker"
           let send = requestSticker env userId peerId stickerId
-          void $ sendN table userId send
+          void $ sendN env userId send
+  logInfo "endActionUpdate"
 
 {-
 send request and decode it, throw error, because we can't start
 -}
-requestDecode :: FromJSON a => Text -> IO a
+requestDecode :: (Show a, FromJSON a) => Text -> IO a
 requestDecode request = do
   resp <- post request
   case eitherDecode (responseBody resp) of
     Right a -> pure a
-    _ -> error "unknown vk response"
+    _e -> error $ "unknown vk response:" ++ show _e
 
 {-
 every 3 second send to vk request and update offset after it
 -}
 handleUpdate :: Env -> (Update -> IO b) -> IO a
 handleUpdate env@Env {..} action = do
-  print "loopUpdate"
+  logInfo "start loop updates"
   threadDelay (3 * 1000000)
   let request = getUpdates lps
   Ok ts updates <- requestDecode request
@@ -188,11 +200,14 @@ with config and settings start vk bot
 -}
 startServer :: Config -> Settings -> IO ()
 startServer Config {..} Settings {..} = do
-  print "start"
+  let Database{..} = database
+  let Log{..} = logFunctions loglevel
+  logInfo "Start VK server"
   let table = fromString tableString
   VKResponse lps <- requestDecode $ getLongPollServer token groupId
-  print "well done"
+  logInfo "get vkresponcse"
+  logDebug $ "VKResponse:" ++ show lps
   set_resp <- post $ setLongPollSettings token groupId
-  print set_resp
+  logDebug $ "vk response settings:" ++ show set_resp
   let env = Env {..}
   handleUpdate env (actionUpdate env)

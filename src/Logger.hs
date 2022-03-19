@@ -22,7 +22,9 @@ logPriority :: Priority -> Priority -> String -> IO ()
 logPriority i p s | i <= p = putStrLn $ show p ++ " | " ++ s
                   | otherwise = return ()
 
--- return logs funcctions
+{-
+return logs functions
+-}
 logFunctions :: Priority -> Log
 logFunctions p =
   Log

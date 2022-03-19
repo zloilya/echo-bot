@@ -9,18 +9,18 @@ import qualified Telegram.Lib as TG
 import qualified VK.Lib as VK
 
 {-
-старт пока только одного бота за раз,
-чтобы не парится с их безопасной остановкой
+start only one bot at a time,
+not to bother with their safe stop
 -}
 
 main :: IO ()
 main = do
-  -- парсим конфиг
+  -- parse config
   Config {..} <- Y.decodeThrow =<< B.readFile "src/Config.yaml"
-  -- запуск тлс менеджера
+  -- start tls manager
   manager <- newManager tlsManagerSettings
   setGlobalManager manager
-  -- запуск бота
+  -- start bot
   if tgStart
     then TG.startServer tgConfig settings
     else

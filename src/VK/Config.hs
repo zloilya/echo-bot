@@ -12,6 +12,7 @@ we don't have FromJSON for it :(
 data Config = Config
   { token :: Text,
     groupId :: Text,
-    tableString :: String
+    tableString :: String,
+    api :: Text
   }
   deriving (FromJSON, Generic, Eq, Show)

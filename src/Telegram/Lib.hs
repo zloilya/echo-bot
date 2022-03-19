@@ -3,7 +3,7 @@ module Telegram.Lib
   )
 where
 
-import Config (Settings (..), Database (..))
+import Config (Database (..), Settings (..))
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket)
 import Control.Monad (replicateM_, void)
@@ -19,6 +19,7 @@ import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn, readFile, writeFile)
+import Logger (Log (..), logFunctions)
 import Network.HTTP.Client
   ( Request (..),
     RequestBody (..),
@@ -28,11 +29,11 @@ import Network.HTTP.Client
   )
 import Network.HTTP.Client.TLS (getGlobalManager)
 import PostgresQuery
-  ( newRepeat,
+  ( Postgres (..),
+    Table,
+    newRepeat,
     queryRepeat,
     updateRepeat,
-    Table,
-    Postgres (..),
   )
 import Telegram.Api
   ( CallbackQuery (..),
@@ -44,8 +45,7 @@ import Telegram.Api
   )
 import Telegram.Config (Config (..))
 import Telegram.Query
-  ( api,
-    valueKeyBoard,
+  ( valueKeyBoard,
     valueMessage,
     valueStiker,
     valueUpdate,
@@ -59,7 +59,6 @@ import Telegram.Types
 import Text.Read (readMaybe)
 import TextShow (TextShow (showt))
 import Prelude hiding (readFile, writeFile)
-import Logger(Log(..), logFunctions)
 
 {-
 method get chat_id from message
@@ -98,7 +97,7 @@ after processing message we need to do something
 -}
 action :: Env -> MessageRequest -> ChatId -> IO ()
 action env@Env {..} mes chatid = do
-  let sendIO = sendN Postgres{..} chatid
+  let sendIO = sendN Postgres {..} chatid
   case mes of
     Stick st -> do
       logInfo "action: sticker"
@@ -112,7 +111,7 @@ action env@Env {..} mes chatid = do
       void $ sendIO io
     Start -> do
       logInfo "action: start"
-      newRepeat Postgres{..} chatid
+      newRepeat Postgres {..} chatid
     Help -> do
       logInfo "action: help"
       let value = valueMessage chatid help
@@ -134,7 +133,8 @@ sendOne Env {..} method requestObject = do
   logInfo $ "send " ++ (T.unpack method)
   logDebug "start sendOne"
   manager <- getGlobalManager
-  initialRequest <- parseRequest (T.unpack $ api token `T.append` method)
+  let parserequest = api `T.append` token `T.append` method
+  initialRequest <- parseRequest (T.unpack $ parserequest)
   let request =
         initialRequest
           { method = "POST",
@@ -178,11 +178,11 @@ actionUpdate env@Env {..} update = do
         Nothing -> logWarn "no valid text"
         Just n -> do
           logInfo "good callback"
-          updateRepeat Postgres{..} chatId n
+          updateRepeat Postgres {..} chatId n
           let repeatN = "received " `T.append` (showt n)
           let value = valueMessage chatId repeatN
           let io = sendOne env "/sendMessage" value
-          sendN Postgres{..} chatId io
+          sendN Postgres {..} chatId io
     UpdateUnknown _ -> do
       logWarn "unknown update"
   logInfo "endActionUpdate"
@@ -218,8 +218,8 @@ with config and settings start telegram bot
 -}
 startServer :: Config -> Settings -> IO ()
 startServer Config {..} Settings {..} = do
-  let Database{..} = database
-  let Log{..} = logFunctions loglevel
+  let Database {..} = database
+  let Log {..} = logFunctions loglevel
   logInfo "Start telegram server"
   text <- readFile path
   logInfo $ "read from file offset" ++ (T.unpack text)

@@ -2,7 +2,6 @@ module VK.Query
   ( getLongPollServer,
     setLongPollSettings,
     getUpdates,
-    sendQuery,
     requestKeyBoard,
     requestMessage,
     requestSticker,
@@ -38,12 +37,6 @@ import VK.Types
   )
 
 {-
-main api vk
--}
-api :: Text
-api = "https://api.vk.com/method"
-
-{-
 we often need this three field
 -}
 groupAccessVersion :: Token -> GroupId -> Text
@@ -57,8 +50,8 @@ groupAccessVersion token groupId =
 {-
 vk send us LongPollServer
 -}
-getLongPollServer :: Token -> GroupId -> Text
-getLongPollServer token groupId =
+getLongPollServer :: Token -> Text -> GroupId -> Text
+getLongPollServer token api groupId =
   T.concat
     [ api,
       "/groups.getLongPollServer",
@@ -68,8 +61,8 @@ getLongPollServer token groupId =
 {-
 vk filter for us messages
 -}
-setLongPollSettings :: Token -> GroupId -> Text
-setLongPollSettings token groupId =
+setLongPollSettings :: Token -> Text -> GroupId -> Text
+setLongPollSettings token api groupId =
   T.concat
     [ api,
       "/groups.setLongPollSettings",
@@ -148,12 +141,6 @@ requestKeyBoard Env {..} userId peerId randomId initialRequest = do
           ]
           initialRequest
   request
-
-{-
-method to send query
--}
-sendQuery :: Text
-sendQuery = api `T.append` "/messages.send"
 
 {-
 it is a keyboard

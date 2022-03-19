@@ -54,7 +54,6 @@ import VK.Query
     requestKeyBoard,
     requestMessage,
     requestSticker,
-    sendQuery,
     setLongPollSettings,
   )
 import VK.Types (ChatId, Env (..), MessageRequest (..), PeerId, RandomId, UserId)
@@ -78,7 +77,8 @@ sendOne Env {..} send = do
   logInfo "start SendOne"
   randomId <- randomIO
   manager <- getGlobalManager
-  initRequest <- parseRequest (T.unpack sendQuery)
+  let query = api `T.append` "/messages.send"
+  initRequest <- parseRequest (T.unpack query)
   let request = send randomId initRequest
   logInfo $ "request:" ++ show request
   resp <- httpLbs request manager
@@ -204,10 +204,10 @@ startServer Config {..} Settings {..} = do
   let Log{..} = logFunctions loglevel
   logInfo "Start VK server"
   let table = fromString tableString
-  VKResponse lps <- requestDecode $ getLongPollServer token groupId
+  VKResponse lps <- requestDecode $ getLongPollServer token api groupId
   logInfo "get vkresponcse"
   logDebug $ "VKResponse:" ++ show lps
-  set_resp <- post $ setLongPollSettings token groupId
+  set_resp <- post $ setLongPollSettings token api groupId
   logDebug $ "vk response settings:" ++ show set_resp
   let env = Env {..}
   handleUpdate env (actionUpdate env)

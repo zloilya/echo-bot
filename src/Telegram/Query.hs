@@ -1,6 +1,5 @@
 module Telegram.Query
-  ( api,
-    valueKeyBoard,
+  ( valueKeyBoard,
     valueUpdate,
     valueStiker,
     valueMessage,
@@ -20,12 +19,6 @@ import Telegram.Api
   )
 import Telegram.Types (ChatId, StickerId, Token)
 import TextShow (TextShow (showt))
-
-{-
-main api telegram
--}
-api :: Token -> Text
-api token = "https://api.telegram.org/bot" `T.append` token
 
 {-
 we need to know chat_id and text to send message for user

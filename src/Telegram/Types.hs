@@ -30,7 +30,8 @@ data Env = Env
     logInfo :: String -> IO (),
     logWarn :: String -> IO (),
     host :: Text,
-    dbname :: Text
+    dbname :: Text,
+    api :: Text
   }
 
 type ChatId = Int64

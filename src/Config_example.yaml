@@ -35,15 +35,6 @@ vkConfig:
 
 # ------------------------------------------ #
 
-# database settings
-database: 
-  # database host
-  host: "localhost" 
-  # database name
-  dbname: "your dbname"
-
-# ------------------------------------------ #
-
 # Everything should be as customizable as possible through configs
 settings:
   # a. The message sent in response to /help.
@@ -52,3 +43,11 @@ settings:
   repeat: "How many more messages do you need to receive?"
   # c. The initial number of repeat for each answer.
   defaultRepeat: 1
+  # log level: Debug | Info | Warn
+  loglevel: "Info"
+  # database settings
+  database: 
+    # database host
+    host: "localhost" 
+    # database name
+    dbname: "metalamp"

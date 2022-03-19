@@ -26,7 +26,12 @@ data Env = Env
     help :: Text,
     repeat :: Text,
     defaultRepeat :: Int,
-    table :: Table
+    table :: Table,
+    logDebug :: String -> IO (),
+    logInfo :: String -> IO (),
+    logWarn :: String -> IO (),
+    host :: Text,
+    dbname :: Text
   }
 
 {-

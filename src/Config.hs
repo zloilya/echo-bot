@@ -24,6 +24,29 @@ defualt settigs for task
 data Settings = Settings
   { help :: Text,
     repeat :: Text,
-    defaultRepeat :: Int
+    defaultRepeat :: Int,
+    loglevel :: Priority,
+    database :: Database
   }
   deriving (FromJSON, Generic, Eq, Show)
+
+{-
+log levels
+-}
+data Priority
+  = -- | Debug messages
+    Debug
+  | -- | Notable information that requires no immediate action.
+    Info
+  | -- | Something is probably wrong, and we should investigate.
+    Warn
+  deriving (FromJSON, Generic, Eq, Ord, Show)
+
+{-
+database settings
+-}
+data Database = Database
+  { host :: Text,
+    dbname :: Text
+  }
+  deriving (FromJSON, Generic, Eq, Ord, Show)

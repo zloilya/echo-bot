@@ -1,6 +1,6 @@
-name:                MetaLamp-telegram-bot
+name:                echo-bot
 version:             0.1.0.0
-github:              "zloilya/MetaLamp-telegram-bot"
+github:              "zloilya/echo-bot"
 license:             BSD3
 author:              "Ilya Baryshnikov"
 maintainer:          "zlonast@gmal.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/MetaLamp-telegram-bot#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/echo-bot#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -52,7 +52,7 @@ library:
   source-dirs: src
 
 executables:
-  MetaLamp-telegram-bot-exe:
+  echo-bot-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -60,10 +60,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - MetaLamp-telegram-bot
+    - echo-bot
 
 tests:
-  MetaLamp-telegram-bot-test:
+  echo-bot-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -71,4 +71,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - MetaLamp-telegram-bot
+    - echo-bot

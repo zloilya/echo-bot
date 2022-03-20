@@ -1,6 +1,6 @@
 # Echo-telegram-bot
 
-# raw guide to run echo_bot
+# raw guide to run echo-bot
 
 initialization databse: psql --host=localhost -d echo_bot < ddl.sql
 

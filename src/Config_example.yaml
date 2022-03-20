@@ -50,4 +50,4 @@ settings:
     # database host
     host: "localhost" 
     # database name
-    dbname: "metalamp"
+    dbname: "echo_bot"
